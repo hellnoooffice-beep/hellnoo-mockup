@@ -251,3 +251,10 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
   .top .btn .hide-m{display:none}
 }
 @media (min-width:861px){.only-m{display:none!important}}
+
+/* Continue watching: 4 in one row on desktop; only the latest 1 on phones and tablets */
+.cwgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1024px),(pointer:coarse) and (max-width:1366px){
+  .cwgrid{grid-template-columns:minmax(0,520px)}
+  .cwgrid>:nth-child(n+2){display:none}
+}

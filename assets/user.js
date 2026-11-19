@@ -8,7 +8,7 @@ route(/^home$/, () => {
   const seen = signedIn() ? cw().map(v => v.id) : [];
   const all = PUB().filter(v => v.ch !== 'av' && !seen.includes(v.id));
   let m = '';
-  if (signedIn() && cw().length) m += `<section class="sec"><div class="sec-h"><h2>Continue watching</h2><div class="sp"></div><a class="btn ghost sm" href="#/history">See all</a></div><div class="grid">${cw().map((v, i) => card(v, { prog: [62, 30, 85, 15][i] })).join('')}</div></section>`;
+  if (signedIn() && cw().length) m += `<section class="sec"><div class="sec-h"><h2>Continue watching</h2><div class="sp"></div><a class="btn ghost sm" href="#/history">See all</a></div><div class="grid cwgrid">${cw().map((v, i) => card(v, { prog: [62, 30, 85, 15][i] })).join('')}</div></section>`;
   m += `<section class="sec">${seen.length ? '<div class="sec-h"><h2>For you</h2></div>' : ''}<div class="grid">${all.map(v => card(v)).join('')}</div></section>`;
   return shell('home', 'all', m);
 });
