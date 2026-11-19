@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hellnoo (mockup)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232EC4B6'/%3E%3Cpath d='M12 9l11 7-11 7z' fill='%230f1115'/%3E%3C/svg%3E">
+<script>
+  /* Load every file with a fresh version number so the browser never shows an old cached copy */
+  window.HN_V = Date.now();
+  document.write('<link rel="stylesheet" href="assets/styles.css?v=' + HN_V + '">');
+</script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+  ['data', 'app', 'user', 'studio', 'admin'].forEach(function (n) {
+    document.write('<script src="assets/' + n + '.js?v=' + HN_V + '"><\/script>');
+  });
+  document.write('<script>render();<\/script>');
+</script>
+</body>
+</html>
