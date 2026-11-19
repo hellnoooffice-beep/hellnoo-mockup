@@ -185,16 +185,16 @@
   const r2 = n => Math.round(n * 100) / 100;
 
   // October pay list. `paid` = paid views in October. Aamir Vlogs comes from the daily data above.
-  // Payouts go to the creator's PayPal or Payoneer account (email only; Hellnoo never asks for a password).
+  // Creators living in India are paid by bank transfer (account number + IFSC); everyone else by PayPal or Payoneer (email only). Hellnoo never asks for a password.
   const payoutRows = [
-    { ch: 'rb', paid: 520000, flags: 0, status: 'Ready', method: 'Payoneer' },
+    { ch: 'rb', paid: 520000, flags: 0, status: 'Ready', method: 'Bank (India)' },
     { ch: 'ts', paid: 288000, flags: 1, status: 'Ready', method: 'PayPal' },
-    { ch: 'zk', paid: 196000, flags: 0, status: 'Ready', method: 'PayPal' },
-    { ch: 'pp', paid: 171000, flags: 0, status: 'Exported', method: 'Payoneer' },
-    { ch: 'gs', paid: 133000, flags: 2, status: 'Held – 5× spike', method: 'PayPal' },
-    { ch: 'kd', paid: 96000, flags: 0, status: 'Paid', utr: '7RX41209876543210', method: 'PayPal' },
+    { ch: 'zk', paid: 196000, flags: 0, status: 'Ready', method: 'Bank (India)' },
+    { ch: 'pp', paid: 171000, flags: 0, status: 'Exported', method: 'Bank (India)' },
+    { ch: 'gs', paid: 133000, flags: 2, status: 'Held – 5× spike', method: 'Bank (India)' },
+    { ch: 'kd', paid: 96000, flags: 0, status: 'Paid', utr: '632104987215', method: 'Bank (India)' },
     { ch: 'vf', paid: 52000, flags: 0, status: 'Paid', utr: 'PO-88120934', method: 'Payoneer' },
-    { ch: 'av', paid: myM.oct.paid, flags: 0, status: '', method: 'PayPal' }
+    { ch: 'av', paid: myM.oct.paid, flags: 0, status: '', method: 'Bank (India)' }
   ];
 
   /* Ledger per channel: earned each month, carried in, balance and status.
@@ -249,7 +249,7 @@
   const run0 = payRun();
   const audit = [
     ['16 Nov 2026, 11:42', 'Admin (Basit)', 'Dismissed report r5 on video “Andhera Ghar”'],
-    ['16 Nov 2026, 10:05', 'Admin (Basit)', 'Marked Kashmir Diaries Oct payout as paid · PayPal ID 7RX41209876543210'],
+    ['16 Nov 2026, 10:05', 'Admin (Basit)', 'Marked Kashmir Diaries Oct payout as paid · bank UTR 632104987215'],
     ['16 Nov 2026, 09:50', 'Admin (Basit)', 'Marked Valley Frames Oct payout as paid · Payoneer ID PO-88120934'],
     ['15 Nov 2026, 19:30', 'Admin (Basit)', `Built pay list for October 2026 (${run0.rows.length} channels, ${fmt(run0.total)}; Gully Sports held)`],
     ['15 Nov 2026, 18:02', 'Admin (Basit)', 'Approved monetization for Tech Saathi'],
