@@ -4,7 +4,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- state (kept in this browser only) ---------- */
-const DEF = { role: 'creator', subs: ['kd', 'rb', 'zk', 'pp', 'ts'], later: ['v3', 'v7', 'v12'], liked: ['v1', 'v2', 'v9', 'v13'], disliked: [], history: ['v1', 'v2', 'v6', 'v3', 'v10', 'v8'], pauseHistory: false, autoplay: true, hidden: [], playlists: [{ id: 'p1', name: 'Kashmir trip ideas', vis: 'Private', items: ['v1', 'v5', 'v12', 'v17', 'v20'] }, { id: 'p2', name: 'Recaps to watch', vis: 'Public', items: ['v2', 'v9', 'v13'] }], readN: false };
+const DEF = { role: 'creator', monet: 'approved', quality: 'Auto', speed: 'Normal', subs: ['kd', 'rb', 'zk', 'pp', 'ts'], later: ['v3', 'v7', 'v12'], liked: ['v1', 'v2', 'v9', 'v13'], disliked: [], history: ['v1', 'v2', 'v6', 'v3', 'v10', 'v8'], pauseHistory: false, autoplay: true, hidden: [], playlists: [{ id: 'p1', name: 'Kashmir trip ideas', vis: 'Private', items: ['v1', 'v5', 'v12', 'v17', 'v20'] }, { id: 'p2', name: 'Recaps to watch', vis: 'Public', items: ['v2', 'v9', 'v13'] }], readN: false };
 let S;
 try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem('hn-mock') || '{}')); } catch (e) { S = Object.assign({}, DEF); }
 const save = () => { try { localStorage.setItem('hn-mock', JSON.stringify(S)); } catch (e) { } };
@@ -23,6 +23,9 @@ const PUB = () => H.videos.filter(v => v.vis === 'Public' && !S.hidden.includes(
 const num = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.0', '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace('.0', '') + 'K' : String(n);
 const full = n => Number(n).toLocaleString('en-IN');
 const inr = n => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
+/* all creator earnings are in US dollars */
+const usd = n => (n < 0 ? '−$' : '$') + Math.abs(Number(n)).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+const rate$ = r => '$' + Number(r).toFixed(2);
 const age = d => d < 1 ? Math.max(1, Math.round(d * 24)) + 'h' : d < 30 ? Math.round(d) + 'd' : d < 365 ? Math.round(d / 30) + (Math.round(d / 30) > 1 ? ' months' : ' month') : Math.round(d / 365) + (d >= 730 ? ' years' : ' year');
 const ageLong = d => d < 1 ? Math.max(1, Math.round(d * 24)) + ' hours ago' : d < 30 ? Math.round(d) + (Math.round(d) > 1 ? ' days ago' : ' day ago') : age(d) + ' ago';
 
@@ -242,7 +245,7 @@ document.addEventListener('submit', e => {
   if (f === 'search') { const q = e.target.q.value.trim(); if (q) go('#/search/' + encodeURIComponent(q)); }
   else if (FORMS[f]) FORMS[f](e.target);
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeModal(); } if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { const i = $('.sbar input'); if (i) { e.preventDefault(); i.focus(); } } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeModal(); } if (e.key === 'f' && $('#pl') && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) ACT.fullscreen(); if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { const i = $('.sbar input'); if (i) { e.preventDefault(); i.focus(); } } });
 addEventListener('scroll', closePop, true);
 const FORMS = {};
 
@@ -273,6 +276,7 @@ function mockMenu(b) {
     { i: 'user', l: 'View as viewer (no channel)', f: set('viewer') },
     { i: 'video', l: 'View as creator (Aamir Vlogs)', f: set('creator') }, '-',
     { i: 'chart', l: 'Open Channel Studio', f: () => { S.role = 'creator'; save(); go('#/studio'); } },
+    { i: 'money', l: 'Earnings: ' + ({ new: 'not eligible yet', ready: 'ready to submit', review: 'under review', approved: 'approved' })[S.monet] + ' (change)', f: () => menu(b, [['new', 'Not eligible yet (needs 10 videos, 30 days)'], ['ready', 'Eligible, ready to submit'], ['review', 'Submitted, under review'], ['approved', 'Approved, earning']].map(([k, l]) => ({ i: S.monet === k ? 'check' : '', l, f: () => { S.role = 'creator'; S.monet = k; save(); go('#/studio/earnings'); } }))) },
     { i: 'shield', l: 'Open Admin tool', f: () => go('#/admin') },
     { i: 'list', l: 'Page index (all pages)', f: () => go('#/index') }, '-',
     { i: 'trash', l: 'Reset mockup data', f: () => { try { localStorage.removeItem('hn-mock'); } catch (e) { } location.hash = '#/home'; location.reload(); } }

@@ -49,6 +49,7 @@
     V('a6', 'av', 'Sufi night in Bandipora', 'Sufi <em>night</em>', 'sc-gold', '21:30', 980, 38),
     V('a7', 'av', 'Night drive to Sonamarg', 'Night <em>drive</em>', 'sc-night', '11:12', 1400, 45, { vis: 'Unlisted' }),
     V('a8', 'av', 'Gully cricket with village kids', 'Gully <em>cricket</em>', 'sc-cricket', '8:55', 2200, 52),
+    V('a17', 'av', 'Kahwa stall at Lal Chowk – 5 am', 'Lal Chowk <em>5 am</em>', 'sc-gold', '7:12', 0, 1.4),
     V('a11', 'av', 'Yusmarg day trip – meadows and pine forest', 'Yusmarg <em>day trip</em>', 'sc-valley', '14:20', 0, 66),
     V('a12', 'av', 'Kashmiri kahwa at home with my mother', 'Ghar ka <em>kahwa</em>', 'sc-gold', '7:48', 0, 80),
     V('a13', 'av', 'Wular lake boat ride', 'Wular <em>lake</em>', 'sc-lake', '10:05', 0, 101),
@@ -71,7 +72,7 @@
   const TODAY = new Date(2026, 10, 16);
   const dayDate = i => new Date(TODAY - (days - 1 - i) * 864e5);
   const monthKey = i => { const d = dayDate(i); return d.getFullYear() + '-' + (d.getMonth() + 1); };
-  const pop = { a1: 2.6, a2: 1.0, a3: 0.8, a4: 1.7, a5: 1.1, a6: 0.5, a7: 0.25, a8: 0.9, a11: 1.0, a12: 0.7, a13: 0.6, a14: 0.8, a15: 0.6, a16: 0.4 };
+  const pop = { a17: 1.6, a1: 2.6, a2: 1.0, a3: 0.8, a4: 1.7, a5: 1.1, a6: 0.5, a7: 0.25, a8: 0.9, a11: 1.0, a12: 0.7, a13: 0.6, a14: 0.8, a15: 0.6, a16: 0.4 };
   const early = { a13: 1900, a14: 3400, a15: 2600, a16: 1800 }; // views before the 90-day window
   const mine = videos.filter(v => v.ch === 'av' && (v.vis === 'Public' || v.vis === 'Unlisted'));
   mine.forEach(v => { v.pub = days - 1 - Math.round(v.days); v.daily = new Array(days).fill(0); v.m = {}; });
@@ -121,8 +122,33 @@
     for (let i = 0; i < days; i++) { const k = monthKey(i); v.m[k] = v.m[k] || { views: 0, counted: 0 }; v.m[k].views += v.daily[i]; }
     // counted views leave out repeats within 24 h, very short views and suspicious traffic (about 71% here)
     Object.values(v.m).forEach(o => { o.counted = Math.round(o.views * 0.71); });
+    /* 1,000-view rule: a video earns only once it passes 1,000 lifetime views.
+       Views are counted from the very first one; when the video passes 1,000, the counted
+       views from earlier months are "unlocked" and paid in the month it passed. */
+    let cum = e; v.crossDay = e >= 1000 ? -1 : null;
+    for (let i = 0; i < days && v.crossDay === null; i++) { cum += v.daily[i]; if (cum >= 1000) v.crossDay = i; }
+    v.crossMonth = v.crossDay === null ? null : v.crossDay < 0 ? 'before' : monthKey(v.crossDay);
+    let backlog = 0, crossed = v.crossMonth === 'before';
+    Object.keys(v.m).forEach(k => { // months are stored in date order
+      const o = v.m[k]; if (k === v.crossMonth) crossed = true;
+      if (!crossed) { o.paid = 0; o.unlocked = 0; backlog += o.counted; return; }
+      o.unlocked = backlog; o.paid = o.counted + backlog; backlog = 0;
+    });
+    v.waiting = backlog; // counted views of a video still under 1,000 (not paid unless it passes)
   });
-  const myMonth = k => { const r = { views: 0, counted: 0 }; mine.forEach(v => { if (v.m[k]) { r.views += v.m[k].views; r.counted += v.m[k].counted; } }); return r; };
+  /* audience by country: each viewer's country comes from their IP at the edge (Cloudflare adds it to every request).
+     Only the country is stored, never the IP. Every video has its own mix, so channel totals are the sum of the videos. */
+  const COUNTRIES = [['IN', 'India', 0.56], ['US', 'United States', 0.1], ['PK', 'Pakistan', 0.06], ['AE', 'United Arab Emirates', 0.05], ['GB', 'United Kingdom', 0.045], ['SA', 'Saudi Arabia', 0.035], ['CA', 'Canada', 0.03], ['BD', 'Bangladesh', 0.02], ['XX', 'Other countries', 0.1]];
+  mine.forEach((v, k) => {
+    v.cw = COUNTRIES.map(([, , w], j) => w * (1 + 0.35 * Math.sin(k * 1.7 + j * 2.1)));
+    v.watchFrac = COUNTRIES.map((c, j) => 0.85 + 0.3 * ((k + j) % 4) / 3); // watch time per view differs a little by country
+  });
+  const byCountry = (list, viewsOf) => { // exact whole numbers that add up to the views
+    const out = COUNTRIES.map(([code, name]) => ({ code, name, views: 0, watchH: 0 }));
+    list.forEach(v => { const n = viewsOf(v); if (!n) return; spread(n, v.cw).forEach((x, j) => { out[j].views += x; out[j].watchH += x * v.avdBase * v.watchFrac[j] / 3600; }); });
+    return out;
+  };
+  const myMonth = k => { const r = { views: 0, counted: 0, paid: 0, unlocked: 0 }; mine.forEach(v => { if (v.m[k]) { r.views += v.m[k].views; r.counted += v.m[k].counted; r.paid += v.m[k].paid; r.unlocked += v.m[k].unlocked; } }); return r; };
   const myM = { aug: myMonth('2026-8'), sep: myMonth('2026-9'), oct: myMonth('2026-10'), nov: myMonth('2026-11') };
 
   // platform-wide (admin)
@@ -151,54 +177,55 @@
     };
   });
 
-  // creator fund (formula from the model meeting): rate per 1,000 counted views = min(R, B×1000÷Q)
-  const fund = { month: 'October 2026', B: 20000, R: 20, Q: 1600000, threshold: 500 };
+  /* creator fund, in US dollars: rate per 1,000 paid views = min(R, B×1000÷Q).
+     Paid views = counted views of videos that have passed 1,000 lifetime views (so views of small videos never dilute the fund). */
+  const fund = { month: 'October 2026', B: 800, R: 0.6, Q: 1600000, threshold: 20, minViews: 1000, minVideos: 10, minDays: 30 };
   fund.rate = Math.min(fund.R, fund.B * 1000 / fund.Q);
-  const RATES = { aug: 15.2, sep: 14.1, oct: fund.rate }; // Aug and Sep were set the same way in their own month
+  const RATES = { aug: 0.56, sep: 0.53, oct: fund.rate }; // Aug and Sep were set the same way in their own month
   const r2 = n => Math.round(n * 100) / 100;
 
-  // October pay list. `paid` = counted (paid) views in October. Aamir Vlogs comes from the daily data above.
+  // October pay list. `paid` = paid views in October. Aamir Vlogs comes from the daily data above.
+  // Payouts go to the creator's PayPal or Payoneer account (email only; Hellnoo never asks for a password).
   const payoutRows = [
-    { ch: 'rb', paid: 520000, flags: 0, status: 'Ready' },
-    { ch: 'ts', paid: 288000, flags: 1, status: 'Ready' },
-    { ch: 'zk', paid: 196000, flags: 0, status: 'Ready' },
-    { ch: 'pp', paid: 171000, flags: 0, status: 'Exported' },
-    { ch: 'gs', paid: 133000, flags: 2, status: 'Held – 5× spike' },
-    { ch: 'kd', paid: 96000, flags: 0, status: 'Paid', utr: '431209876543' },
-    { ch: 'vf', paid: 41000, flags: 0, status: 'Paid', utr: '431209871122' },
-    { ch: 'ws', paid: 22000, flags: 0, status: '' },
-    { ch: 'av', paid: myM.oct.counted, flags: 0, status: '' }
+    { ch: 'rb', paid: 520000, flags: 0, status: 'Ready', method: 'Payoneer' },
+    { ch: 'ts', paid: 288000, flags: 1, status: 'Ready', method: 'PayPal' },
+    { ch: 'zk', paid: 196000, flags: 0, status: 'Ready', method: 'PayPal' },
+    { ch: 'pp', paid: 171000, flags: 0, status: 'Exported', method: 'Payoneer' },
+    { ch: 'gs', paid: 133000, flags: 2, status: 'Held – 5× spike', method: 'PayPal' },
+    { ch: 'kd', paid: 96000, flags: 0, status: 'Paid', utr: '7RX41209876543210', method: 'PayPal' },
+    { ch: 'vf', paid: 52000, flags: 0, status: 'Paid', utr: 'PO-88120934', method: 'Payoneer' },
+    { ch: 'av', paid: myM.oct.paid, flags: 0, status: '', method: 'PayPal' }
   ];
 
   /* Ledger per channel: earned each month, carried in, balance and status.
-     Rules: below ₹500 the balance carries to the next month; month locked by the 7th, paid 15th–20th. */
+     Rules: below $20 the balance carries to the next month; month locked by the 7th, paid automatically 15th–20th. */
   function ledger(id) {
     const row = payoutRows.find(p => p.ch === id);
     if (!row) return [];
     const mineCh = id === 'av';
-    const counted = mineCh ? { aug: null, sep: myM.sep.counted, oct: myM.oct.counted, nov: myM.nov.counted }
+    const counted = mineCh ? { aug: null, sep: myM.sep.paid, oct: myM.oct.paid, nov: myM.nov.paid }
       : { aug: Math.round(row.paid * 0.7 / 100) * 100, sep: Math.round(row.paid * 0.86 / 100) * 100, oct: row.paid, nov: Math.round(row.paid * 0.55 / 100) * 100 };
     const out = []; let carry = 0;
     [['aug', 'August 2026', 'Oct'], ['sep', 'September 2026', 'Oct'], ['oct', 'October 2026', 'Nov']].forEach(([k, label]) => {
       if (counted[k] == null) { out.push({ k, month: label, counted: null, rate: null, amount: 0, carryIn: 0, balance: 0, status: 'Not eligible yet', note: 'Not in the earnings programme yet.' }); return; }
       const amount = r2(counted[k] * RATES[k] / 1000), carryIn = r2(carry), balance = r2(carry + amount);
       let status, note;
-      if (balance < fund.threshold) { status = 'Carried forward'; note = 'Below ₹500, added to next month. Nothing is lost.'; carry = balance; }
+      if (balance < fund.threshold) { status = 'Carried forward'; note = 'Below $20, added to next month. Nothing is lost.'; carry = balance; }
       else {
         status = k === 'oct' ? row.status : 'Paid'; carry = 0;
-        note = k !== 'oct' ? 'Paid 15–20 ' + (k === 'aug' ? 'Sep' : 'Oct') : row.status === 'Paid' ? 'Paid · UTR ' + row.utr : row.status.startsWith('Held') ? 'On hold while unusual traffic is checked' : 'In the pay run for 15–20 Nov';
+        note = k !== 'oct' ? 'Paid by ' + row.method + ' 15–20 ' + (k === 'aug' ? 'Sep' : 'Oct') : row.status === 'Paid' ? 'Paid by ' + row.method + ' · ID ' + row.utr : row.status.startsWith('Held') ? 'On hold while unusual traffic is checked' : 'In the pay run for 15–20 Nov (' + row.method + ')';
       }
       out.push({ k, month: label, counted: counted[k], rate: RATES[k], amount, carryIn, balance, status, note });
     });
-    const nov = { k: 'nov', month: 'November 2026', counted: counted.nov, rate: null, est: r2(counted.nov * fund.rate / 1000), amount: null, carryIn: r2(carry), balance: null, status: 'Counting', note: 'Month not finished. Estimate at about ₹' + fund.rate.toFixed(2) + ' per 1,000.' };
+    const nov = { k: 'nov', month: 'November 2026', counted: counted.nov, rate: null, est: r2(counted.nov * fund.rate / 1000), amount: null, carryIn: r2(carry), balance: null, status: 'Counting', note: 'Month not finished. Estimate at about $' + fund.rate.toFixed(2) + ' per 1,000.' };
     return [nov].concat(out.reverse());
   }
   payoutRows.forEach(p => {
     const oct = ledger(p.ch).find(m => m.k === 'oct');
     p.amount = oct.amount; p.carryIn = oct.carryIn; p.balance = oct.balance;
-    if (oct.status === 'Carried forward') p.status = 'Carried (below ₹500)';
+    if (oct.status === 'Carried forward') p.status = 'Carried (below $20)';
   });
-  // the rest of the 1,600,000 counted views belong to small channels whose balance is under ₹500
+  // the rest of the 1,600,000 paid views belong to small channels whose balance is under $20
   const others = { channels: 41, views: fund.Q - payoutRows.reduce((s, p) => s + p.paid, 0) };
   others.amount = r2(others.views * fund.rate / 1000);
   const payRun = () => {
@@ -218,14 +245,14 @@
     { id: 'r6', type: 'Comment', target: '“Spam link bit.ly/…”', reason: 'Spam', by: 'Faisal Dar', when: '2 days ago', status: 'Removed', count: 5 }
   ];
 
-  const fmt = n => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
+  const fmt = n => '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   const run0 = payRun();
   const audit = [
     ['16 Nov 2026, 11:42', 'Admin (Basit)', 'Dismissed report r5 on video “Andhera Ghar”'],
-    ['16 Nov 2026, 10:05', 'Admin (Basit)', 'Marked Kashmir Diaries Oct payout as paid · UTR 431209876543'],
-    ['16 Nov 2026, 09:50', 'Admin (Basit)', 'Marked Valley Frames Oct payout as paid · UTR 431209871122'],
+    ['16 Nov 2026, 10:05', 'Admin (Basit)', 'Marked Kashmir Diaries Oct payout as paid · PayPal ID 7RX41209876543210'],
+    ['16 Nov 2026, 09:50', 'Admin (Basit)', 'Marked Valley Frames Oct payout as paid · Payoneer ID PO-88120934'],
     ['15 Nov 2026, 19:30', 'Admin (Basit)', `Built pay list for October 2026 (${run0.rows.length} channels, ${fmt(run0.total)}; Gully Sports held)`],
-    ['15 Nov 2026, 18:02', 'Admin (Basit)', 'Approved earnings for Tech Saathi'],
+    ['15 Nov 2026, 18:02', 'Admin (Basit)', 'Approved monetization for Tech Saathi'],
     ['14 Nov 2026, 09:15', 'Moderator (Owais)', 'Removed comment “Spam link bit.ly/…”'],
     ['12 Nov 2026, 16:40', 'Admin (Basit)', 'Suspended user Arjun Singh (spam uploads)'],
     ['7 Nov 2026, 21:00', 'Admin (Basit)', 'Locked October 2026 earnings']
@@ -251,5 +278,11 @@
   // total accounts: everyone who signed up before this 120-day window plus the daily sign-ups in it
   const accounts = 26400 + plat.newUsers.reduce((a, b) => a + b, 0);
 
-  window.HN = { channels, videos, series, plat, users, accounts, fund, RATES, payoutRows, ledger, others, payRun, myM, myEarnings, reports, audit, notifications, commentPool, rnd, dayDate };
+  // channels that pressed "Submit for monetization" (10 public videos and 30 days old), waiting for the admin
+  const applications = [
+    { id: 'ap1', ch: 'ws', sent: '14 Nov 2026', videos: 14, age: 310, views: 9800, flags: 0, status: 'Waiting' },
+    { id: 'ap2', name: 'Chinar Comedy', handle: 'chinarcomedy', logo: 'CC', color: '#ff9f6b', sent: '12 Nov 2026', videos: 11, age: 41, views: 2300, flags: 1, note: '2 videos look re-uploaded from another site', status: 'Waiting' }
+  ];
+
+  window.HN = { channels, videos, series, plat, users, accounts, fund, RATES, payoutRows, ledger, others, payRun, myM, myEarnings, reports, audit, notifications, commentPool, rnd, dayDate, monthKey, COUNTRIES, byCountry, applications };
 })();
