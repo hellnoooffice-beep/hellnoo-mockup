@@ -185,16 +185,16 @@
   const r2 = n => Math.round(n * 100) / 100;
 
   // October pay list. `paid` = paid views in October. Aamir Vlogs comes from the daily data above.
-  // Creators living in India are paid by bank transfer (account number + IFSC); everyone else by PayPal or Payoneer (email only). Hellnoo never asks for a password.
+  // Each creator gives at least one of PayPal / Payoneer / UPI ID when applying, and picks which one is used. Hellnoo never asks for a password, PIN or OTP.
   const payoutRows = [
-    { ch: 'rb', paid: 520000, flags: 0, status: 'Ready', method: 'Bank (India)' },
+    { ch: 'rb', paid: 520000, flags: 0, status: 'Ready', method: 'UPI' },
     { ch: 'ts', paid: 288000, flags: 1, status: 'Ready', method: 'PayPal' },
-    { ch: 'zk', paid: 196000, flags: 0, status: 'Ready', method: 'Bank (India)' },
-    { ch: 'pp', paid: 171000, flags: 0, status: 'Exported', method: 'Bank (India)' },
-    { ch: 'gs', paid: 133000, flags: 2, status: 'Held – 5× spike', method: 'Bank (India)' },
-    { ch: 'kd', paid: 96000, flags: 0, status: 'Paid', utr: '632104987215', method: 'Bank (India)' },
+    { ch: 'zk', paid: 196000, flags: 0, status: 'Ready', method: 'Payoneer' },
+    { ch: 'pp', paid: 171000, flags: 0, status: 'Exported', method: 'UPI' },
+    { ch: 'gs', paid: 133000, flags: 2, status: 'Held – 5× spike', method: 'UPI' },
+    { ch: 'kd', paid: 96000, flags: 0, status: 'Paid', utr: '632104987215', method: 'UPI' },
     { ch: 'vf', paid: 52000, flags: 0, status: 'Paid', utr: 'PO-88120934', method: 'Payoneer' },
-    { ch: 'av', paid: myM.oct.paid, flags: 0, status: '', method: 'Bank (India)' }
+    { ch: 'av', paid: myM.oct.paid, flags: 0, status: '', method: 'UPI' }
   ];
 
   /* Ledger per channel: earned each month, carried in, balance and status.
@@ -249,7 +249,7 @@
   const run0 = payRun();
   const audit = [
     ['16 Nov 2026, 11:42', 'Admin (Basit)', 'Dismissed report r5 on video “Andhera Ghar”'],
-    ['16 Nov 2026, 10:05', 'Admin (Basit)', 'Marked Kashmir Diaries Oct payout as paid · bank UTR 632104987215'],
+    ['16 Nov 2026, 10:05', 'Admin (Basit)', 'Marked Kashmir Diaries Oct payout as paid · UPI ref 632104987215'],
     ['16 Nov 2026, 09:50', 'Admin (Basit)', 'Marked Valley Frames Oct payout as paid · Payoneer ID PO-88120934'],
     ['15 Nov 2026, 19:30', 'Admin (Basit)', `Built pay list for October 2026 (${run0.rows.length} channels, ${fmt(run0.total)}; Gully Sports held)`],
     ['15 Nov 2026, 18:02', 'Admin (Basit)', 'Approved monetization for Tech Saathi'],
@@ -280,8 +280,8 @@
 
   // channels that pressed "Submit for monetization" (10 public videos and 30 days old), waiting for the admin
   const applications = [
-    { id: 'ap1', ch: 'ws', sent: '14 Nov 2026', videos: 14, age: 310, views: 9800, flags: 0, status: 'Waiting' },
-    { id: 'ap2', name: 'Chinar Comedy', handle: 'chinarcomedy', logo: 'CC', color: '#ff9f6b', sent: '12 Nov 2026', videos: 11, age: 41, views: 2300, flags: 1, note: '2 videos look re-uploaded from another site', status: 'Waiting' }
+    { id: 'ap1', ch: 'ws', sent: '14 Nov 2026', videos: 14, age: 310, views: 9800, flags: 0, pay: 'PayPal', status: 'Waiting' },
+    { id: 'ap2', name: 'Chinar Comedy', handle: 'chinarcomedy', logo: 'CC', color: '#ff9f6b', sent: '12 Nov 2026', videos: 11, age: 41, views: 2300, flags: 1, pay: 'UPI', note: '2 videos look re-uploaded from another site', status: 'Waiting' }
   ];
 
   window.HN = { channels, videos, series, plat, users, accounts, fund, RATES, payoutRows, ledger, others, payRun, myM, myEarnings, reports, audit, notifications, commentPool, rnd, dayDate, monthKey, COUNTRIES, byCountry, applications };
